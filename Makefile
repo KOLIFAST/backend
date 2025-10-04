@@ -9,6 +9,9 @@ dev:
 start:
 	npm run start
 
+run:
+	$(MAKE) build && $(MAKE) start
+
 up:
 	docker run -d \
 		--name $(POSTGRES_CONTAINER) \
@@ -34,3 +37,6 @@ reset: down
 
 migrate:
 	docker exec -i $(POSTGRES_CONTAINER) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) < ./schema.sql
+
+ngrok:
+	ngrok http --url=trusty-serval-master.ngrok-free.app $(PORT)
