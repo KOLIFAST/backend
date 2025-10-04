@@ -2,6 +2,7 @@ import sql from "../db/index.js";
 import type { DBError } from "../errors/errors.js";
 import type { User } from "../models/models.js";
 import { Err, Ok, type Result } from "../types/result.js";
+import { query_by_id } from "../utils/utils.js";
 
 export async function insert_user(user: { id: string, phone: string }): Promise<Result<void, DBError>> {
   try {
@@ -45,7 +46,7 @@ export async function check_user_existance_by_phone(phone: string): Promise<Resu
 
 export async function get_user_by_id(id: string): Promise<Result<User, DBError>> {
   try {
-    const user = await get_user("id", id)
+    const user = await get_user(query_by_id, id)
     if (!user) {
       return Err({
         type: "NotFoundError",

@@ -4,7 +4,8 @@ import { generate_otp_code, generate_uuid, parse_invalid_fields } from "../utils
 import { get_otp_code, insert_otp_code } from "../repositories/otp.js"
 import type { ZodIssue } from "zod/v3"
 import { check_user_existance_by_phone, insert_user } from "../repositories/user.js"
-import { insert_session } from "../repositories/session.js"
+import { insert_session, invalidate_session } from "../repositories/session.js"
+import { send_otp_via_whatsapp } from "../providers/whatsapp.js"
 
 export async function handle_otp_request(req: Request, res: Response) {
   const parseResult = z.object({
@@ -15,9 +16,15 @@ export async function handle_otp_request(req: Request, res: Response) {
       invalid_fields: ["phone"]
     })
   }
+  const { phone } = parseResult.data
   const otp_code = generate_otp_code()
-  const result = await insert_otp_code(otp_code, parseResult.data.phone)
+  const result = await insert_otp_code(otp_code, phone)
   if (!result.ok) {
+    return res.status(500).json()
+  }
+  const send_otp_result = await send_otp_via_whatsapp(otp_code, phone)
+  if (!send_otp_result.ok) {
+    console.error(send_otp_result.error.message)
     return res.status(500).json()
   }
   return res.status(200).json()
@@ -78,4 +85,13 @@ export async function handle_otp_verification(req: Request, res: Response) {
       session: session.id
     }
   })
+}
+
+export async function handle_logout(req: Request, res: Response) {
+  const result = await invalidate_session(req.session_id!)
+  if (!result.ok) {
+    console.error(result.error.message)
+    return res.status(500).json()
+  }
+  return res.status(200).json()
 }

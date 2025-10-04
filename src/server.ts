@@ -1,7 +1,8 @@
 import express from "express"
 import "dotenv/config"
 import healthHandler from "./handlers/health.js"
-import { handle_otp_request, handle_otp_verification } from "./handlers/auth.js"
+import { handle_logout, handle_otp_request, handle_otp_verification } from "./handlers/auth.js"
+import { authenticate } from "./middleware/auth.js"
 
 const app = express()
 app.use(express.json())
@@ -12,6 +13,7 @@ app.get("/health", healthHandler.getDbHealthStatus)
 
 app.post("/auth/request-otp", handle_otp_request)
 app.post("/auth/verify-otp", handle_otp_verification)
+app.use(authenticate).get("/auth/logout", handle_logout)
 
 const PORT = process.env.PORT || "8080"
 
