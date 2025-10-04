@@ -36,7 +36,7 @@ export async function send_otp_via_whatsapp(otp: string, phone: string): Promise
         ]
       }
     }
-    const url = "https://graph.facebook.com/v22.0/112819018380624/messages"
+    const url = `https://graph.facebook.com/v22.0/${process.env.WHATSAPP_NUM_ID}/messages`
     const result = await fetch(url, {
       method: "POST",
       headers: {
