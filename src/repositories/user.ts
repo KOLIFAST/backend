@@ -2,7 +2,6 @@ import sql from "../db/index.js";
 import type { DBError } from "../errors/errors.js";
 import type { User } from "../models/models.js";
 import { Err, Ok, type Result } from "../types/result.js";
-import { query_by_id } from "../utils/utils.js";
 
 export async function insert_user(user: { id: string, phone: string }): Promise<Result<void, DBError>> {
   try {
@@ -23,13 +22,6 @@ export async function insert_user(user: { id: string, phone: string }): Promise<
   }
 }
 
-async function get_user(by: string, value: string): Promise<User | undefined> {
-  const [user] = await sql<User[]>`
-    select * from users where ${by}=${value}
-  `
-  return user
-}
-
 export async function check_user_existance_by_phone(phone: string): Promise<Result<String | undefined, DBError>> {
   try {
     const [result] = await sql<{ id: string }[]>`
@@ -46,8 +38,10 @@ export async function check_user_existance_by_phone(phone: string): Promise<Resu
 
 export async function get_user_by_id(id: string): Promise<Result<User, DBError>> {
   try {
-    const user = await get_user(query_by_id, id)
-    if (!user) {
+    const [user] = await sql<User[]>`
+      select * from users where id=${id}
+    `
+    if (user == undefined) {
       return Err({
         type: "NotFoundError",
         message: `User with id ${id} was not found`
@@ -63,8 +57,10 @@ export async function get_user_by_id(id: string): Promise<Result<User, DBError>>
 
 export async function get_user_by_phone_number(phone: string): Promise<Result<User, DBError>> {
   try {
-    const user = await get_user("phone", phone)
-    if (!user) {
+    const [user] = await sql<User[]>`
+      select * from users where phone=${phone}
+    `
+    if (user == undefined) {
       return Err({
         type: "NotFoundError",
         message: `User with phone ${phone} was not found`
@@ -74,6 +70,25 @@ export async function get_user_by_phone_number(phone: string): Promise<Result<Us
   } catch (err: unknown) {
     return Err({
       type: "DatabaseError", message: `Error while getting user by phone number: ${String(err)}`
+    })
+  }
+}
+
+export async function update_user_profile(user: User): Promise<Result<void, DBError>> {
+  try {
+    const { id, profile_picture, first_name, last_name } = user
+    await sql`
+      update users set
+        profile_picture=${profile_picture},
+        first_name=${first_name},
+        last_name=${last_name}
+      where id=${id}
+    `
+    return Ok(undefined)
+  } catch (err: unknown) {
+    return Err({
+      type: "DatabaseError",
+      message: `Error while updating user profile: ${String(err)}`
     })
   }
 }
