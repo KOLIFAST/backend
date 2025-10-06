@@ -34,3 +34,12 @@ export async function handle_profile_update(req: Request, res: Response) {
   }
   return res.status(200).json()
 }
+
+export async function handle_get_user_data(req: Request, res: Response) {
+  let current_user = req.user!
+  return res.status(200).json({
+    data: {
+      user: current_user
+    }
+  })
+}

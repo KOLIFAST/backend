@@ -3,7 +3,7 @@ import "dotenv/config"
 import healthHandler from "./handlers/health.js"
 import { handle_logout, handle_otp_request, handle_otp_verification } from "./handlers/auth.js"
 import { authenticate } from "./middleware/auth.js"
-import { handle_profile_update } from "./handlers/user.js"
+import { handle_get_user_data, handle_profile_update } from "./handlers/user.js"
 
 const app = express()
 const authed_router = Router().use(authenticate)
@@ -19,6 +19,7 @@ app.post("/auth/verify-otp", handle_otp_verification)
 authed_router.get("/auth/logout", handle_logout)
 
 authed_router.patch("/users", handle_profile_update)
+authed_router.get("/users", handle_get_user_data)
 
 const PORT = process.env.PORT || "8080"
 
