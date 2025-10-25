@@ -138,3 +138,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .dist
+
+# User uploads
+uploads/
+
+# Claude Code local settings
+.claude/settings.local.json
