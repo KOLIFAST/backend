@@ -6,6 +6,7 @@ import type { ZodIssue } from "zod/v3"
 import { check_user_existance_by_phone, insert_user, get_user_by_id } from "../repositories/user.js"
 import { send_otp_via_whatsapp } from "../providers/whatsapp.js"
 import { generate_jwt_token } from "../utils/jwt.js"
+import { initialize_kyc_status } from "../repositories/kyc.js"
 
 export async function handle_otp_request(req: Request, res: Response) {
   const parseResult = z.object({
@@ -35,7 +36,8 @@ export async function handle_otp_verification(req: Request, res: Response) {
   const parseResult = z.object({
     phone: z.string().nonempty(),
     code: z.string().nonempty(),
-    fullName: z.string().nonempty().optional()
+    fullName: z.string().nonempty().optional(),
+    appType: z.enum(['kolifast', 'kolideliver']).optional()
   }).safeParse(req.body)
   if (!parseResult.success) {
     const invalid_fields = parse_invalid_fields(parseResult.error.issues as ZodIssue[])
@@ -43,7 +45,11 @@ export async function handle_otp_verification(req: Request, res: Response) {
       invalid_fields
     })
   }
-  const { phone, code, fullName } = parseResult.data
+  const { phone, code, fullName, appType } = parseResult.data
+
+  // Determine user type based on app
+  const user_type: 'client' | 'driver' = appType === 'kolideliver' ? 'driver' : 'client'
+
   const result = await get_otp_code(code, phone)
   if (!result.ok) {
     console.error(result.error.message)
@@ -60,11 +66,15 @@ export async function handle_otp_verification(req: Request, res: Response) {
     return res.status(500).json()
   }
   let user_id = user_exists_result.value
+  let is_new_user = false
+
   if (user_id == undefined) {
+    is_new_user = true
     const new_user = {
       id: generate_uuid(),
       phone: phone,
-      full_name: fullName
+      full_name: fullName || undefined,
+      user_type: user_type
     }
     const user_creation_result = await insert_user(new_user)
     if (!user_creation_result.ok) {
@@ -72,6 +82,15 @@ export async function handle_otp_verification(req: Request, res: Response) {
       return res.status(500).json()
     }
     user_id = new_user.id
+
+    // Initialize KYC status for new drivers
+    if (user_type === 'driver') {
+      const kyc_init_result = await initialize_kyc_status(user_id)
+      if (!kyc_init_result.ok) {
+        console.error('Failed to initialize KYC:', kyc_init_result.error.message)
+        // Don't fail the registration, just log the error
+      }
+    }
   }
 
   // Generate JWT token
@@ -87,12 +106,13 @@ export async function handle_otp_verification(req: Request, res: Response) {
   return res.status(200).json({
     data: {
       token: token,
-      user: user_result.value
+      user: user_result.value,
+      isNewUser: is_new_user
     }
   })
 }
 
-export async function handle_logout(req: Request, res: Response) {
+export async function handle_logout(_req: Request, res: Response) {
   // With JWT, logout is handled client-side by removing the token
   // This endpoint can be used for tracking/analytics or blacklisting tokens if needed
   return res.status(200).json({

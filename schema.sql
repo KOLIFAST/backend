@@ -3,6 +3,9 @@ create table if not exists users (
   phone text not null unique,
   profile_picture text not null default '',
   full_name text not null default '',
+  user_type text not null default 'client' check (user_type in ('client', 'driver', 'admin')),
+  is_driver boolean not null default false,
+  driver_verified boolean not null default false,
   created_at timestamptz not null default now()
 );
 

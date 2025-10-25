@@ -3,14 +3,22 @@ import type { DBError } from "../errors/errors.js";
 import type { User } from "../models/models.js";
 import { Err, Ok, type Result } from "../types/result.js";
 
-export async function insert_user(user: { id: string, phone: string, full_name?: string }): Promise<Result<void, DBError>> {
+export async function insert_user(user: {
+  id: string,
+  phone: string,
+  full_name?: string | undefined,
+  user_type?: 'client' | 'driver' | 'admin' | undefined
+}): Promise<Result<void, DBError>> {
   try {
+    const user_type = user.user_type || 'client'
+    const is_driver = user_type === 'driver'
+
     await sql`
       insert into users (
-        id, phone, full_name
+        id, phone, full_name, user_type, is_driver
       )
       values (
-        ${user.id}, ${user.phone}, ${user.full_name || ''}
+        ${user.id}, ${user.phone}, ${user.full_name || ''}, ${user_type}, ${is_driver}
       )
     `
     return Ok(undefined)
@@ -22,7 +30,7 @@ export async function insert_user(user: { id: string, phone: string, full_name?:
   }
 }
 
-export async function check_user_existance_by_phone(phone: string): Promise<Result<String | undefined, DBError>> {
+export async function check_user_existance_by_phone(phone: string): Promise<Result<string | undefined, DBError>> {
   try {
     const [result] = await sql<{ id: string }[]>`
       select id from users where phone=${phone}
