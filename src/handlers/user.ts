@@ -8,8 +8,7 @@ export async function handle_profile_update(req: Request, res: Response) {
   let current_user = req.user!
   const parseResult = z.object({
     profile_picture: z.string().nonempty().nullable(),
-    first_name: z.string().nonempty().nullable(),
-    last_name: z.string().nonempty().nullable()
+    full_name: z.string().nonempty().nullable()
   }).safeParse(req.body)
   if (!parseResult.success) {
     const invalid_fields = parse_invalid_fields(parseResult.error.issues as ZodIssue[])
@@ -17,15 +16,12 @@ export async function handle_profile_update(req: Request, res: Response) {
       invalid_fields
     })
   }
-  const { profile_picture, last_name, first_name } = parseResult.data
+  const { profile_picture, full_name } = parseResult.data
   if (profile_picture) {
     current_user.profile_picture = profile_picture
   }
-  if (last_name) {
-    current_user.last_name = last_name
-  }
-  if (first_name) {
-    current_user.first_name = first_name
+  if (full_name) {
+    current_user.full_name = full_name
   }
   const result = await update_user_profile(current_user)
   if (!result.ok) {

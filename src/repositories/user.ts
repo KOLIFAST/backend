@@ -3,14 +3,14 @@ import type { DBError } from "../errors/errors.js";
 import type { User } from "../models/models.js";
 import { Err, Ok, type Result } from "../types/result.js";
 
-export async function insert_user(user: { id: string, phone: string }): Promise<Result<void, DBError>> {
+export async function insert_user(user: { id: string, phone: string, full_name?: string }): Promise<Result<void, DBError>> {
   try {
     await sql`
       insert into users (
-        id, phone
+        id, phone, full_name
       )
       values (
-        ${user.id}, ${user.phone}
+        ${user.id}, ${user.phone}, ${user.full_name || ''}
       )
     `
     return Ok(undefined)
@@ -76,12 +76,11 @@ export async function get_user_by_phone_number(phone: string): Promise<Result<Us
 
 export async function update_user_profile(user: User): Promise<Result<void, DBError>> {
   try {
-    const { id, profile_picture, first_name, last_name } = user
+    const { id, profile_picture, full_name } = user
     await sql`
       update users set
         profile_picture=${profile_picture},
-        first_name=${first_name},
-        last_name=${last_name}
+        full_name=${full_name}
       where id=${id}
     `
     return Ok(undefined)

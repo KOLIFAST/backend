@@ -3,9 +3,9 @@ import z from "zod"
 import { generate_otp_code, generate_uuid, parse_invalid_fields } from "../utils/utils.js"
 import { get_otp_code, insert_otp_code } from "../repositories/otp.js"
 import type { ZodIssue } from "zod/v3"
-import { check_user_existance_by_phone, insert_user } from "../repositories/user.js"
-import { insert_session, invalidate_session } from "../repositories/session.js"
+import { check_user_existance_by_phone, insert_user, get_user_by_id } from "../repositories/user.js"
 import { send_otp_via_whatsapp } from "../providers/whatsapp.js"
+import { generate_jwt_token } from "../utils/jwt.js"
 
 export async function handle_otp_request(req: Request, res: Response) {
   const parseResult = z.object({
@@ -34,7 +34,8 @@ export async function handle_otp_request(req: Request, res: Response) {
 export async function handle_otp_verification(req: Request, res: Response) {
   const parseResult = z.object({
     phone: z.string().nonempty(),
-    code: z.string().nonempty()
+    code: z.string().nonempty(),
+    fullName: z.string().nonempty().optional()
   }).safeParse(req.body)
   if (!parseResult.success) {
     const invalid_fields = parse_invalid_fields(parseResult.error.issues as ZodIssue[])
@@ -42,7 +43,7 @@ export async function handle_otp_verification(req: Request, res: Response) {
       invalid_fields
     })
   }
-  const { phone, code } = parseResult.data
+  const { phone, code, fullName } = parseResult.data
   const result = await get_otp_code(code, phone)
   if (!result.ok) {
     console.error(result.error.message)
@@ -62,7 +63,8 @@ export async function handle_otp_verification(req: Request, res: Response) {
   if (user_id == undefined) {
     const new_user = {
       id: generate_uuid(),
-      phone: phone
+      phone: phone,
+      full_name: fullName
     }
     const user_creation_result = await insert_user(new_user)
     if (!user_creation_result.ok) {
@@ -71,27 +73,29 @@ export async function handle_otp_verification(req: Request, res: Response) {
     }
     user_id = new_user.id
   }
-  const session = {
-    id: generate_uuid(),
-    user_id: user_id.toString()
-  }
-  const session_creation_result = await insert_session(session)
-  if (!session_creation_result.ok) {
-    console.error(session_creation_result.error.message)
+
+  // Generate JWT token
+  const token = generate_jwt_token(user_id.toString(), phone)
+
+  // Get user data to return
+  const user_result = await get_user_by_id(user_id.toString())
+  if (!user_result.ok) {
+    console.error(user_result.error.message)
     return res.status(500).json()
   }
+
   return res.status(200).json({
     data: {
-      session: session.id
+      token: token,
+      user: user_result.value
     }
   })
 }
 
 export async function handle_logout(req: Request, res: Response) {
-  const result = await invalidate_session(req.session_id!)
-  if (!result.ok) {
-    console.error(result.error.message)
-    return res.status(500).json()
-  }
-  return res.status(200).json()
+  // With JWT, logout is handled client-side by removing the token
+  // This endpoint can be used for tracking/analytics or blacklisting tokens if needed
+  return res.status(200).json({
+    message: "Logged out successfully"
+  })
 }

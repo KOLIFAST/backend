@@ -2,8 +2,7 @@ create table if not exists users (
   id text not null primary key,
   phone text not null unique,
   profile_picture text not null default '',
-  first_name text not null default '',
-  last_name text not null default '',
+  full_name text not null default '',
   created_at timestamptz not null default now()
 );
 
